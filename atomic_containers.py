@@ -27,6 +27,15 @@ class AtomicList(Atomic):
                     atomized_list.append(Singleton(item))
         return atomized_list
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.data})"
+    
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def __iter__(self) -> Iterable:
+        return iter(self.data)
+
     def __contains__(self, value: Union[AtomicList|Singleton]) -> bool:
         return value in self.data
 
@@ -94,7 +103,7 @@ class AtomicDict(Atomic):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.data})"
-
+    
     def __len__(self) -> int:
         return len(self.data)
 
