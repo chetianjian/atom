@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Iterable, Union, List, Dict
+from typing import Union, Iterable, List, Dict
 from threading import Lock
 from singleton import Singleton
 from atomic import Atomic
@@ -66,10 +66,13 @@ class AtomicList(Atomic):
             atomized_list = self.atomize(obj=other)
             self.data.extend(atomized_list)
 
-    def append(self, other: Union[Atomic|int|float]):
-        from common import create
-        with self.lock:
-            self.data.append(create(other))
+    def append(self, other: Union[AtomicList|List|Singleton|int|float]):
+        if isinstance(other, (AtomicList, List)):
+            with self.lock:
+                self.data.append(AtomicList(other))
+        else:
+            with self.lock:
+                self.data.append(Singleton(other))
 
     def remove(self, item: Atomic):
         for _ in range(len(self)):
@@ -138,10 +141,10 @@ class AtomicDict(Atomic):
         with self.data[key].lock:
             return self.data[key]
 
-    def __setitem__(self, key: str, value: Union[Atomic|int|float]):
-        if isinstance(value, Atomic):
+    def __setitem__(self, key: str, value: Union[AtomicDict|Dict|Singleton|int|float]):
+        if isinstance(value, (AtomicDict, Dict)):
             with self.data[key].lock:
-                self.data[key] = value
+                self.data[key] = AtomicDict(value)
         else:
             with self.data[key].lock:
                 self.data[key] = Singleton(value)

@@ -1,6 +1,5 @@
 from threading import Lock
 from abc import ABC, abstractmethod
-from typing import Iterable
 
 
 
