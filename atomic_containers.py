@@ -9,7 +9,7 @@ from atomic import Atomic
 class AtomicList(Atomic):
     data: List[AtomicList|Singleton]
     lock: Lock
-    
+
     def __init__(self, default: Union[AtomicList|List[AtomicList|List|Singleton|int|float]]):
         assert isinstance(default, (AtomicList, List)), TypeError(f"default: {default} is not an AtomicList or List")
         super().__init__(default=default)
@@ -27,9 +27,6 @@ class AtomicList(Atomic):
                     atomized_list.append(Singleton(item))
         return atomized_list
 
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.data})"
-    
     def __len__(self) -> int:
         return len(self.data)
 
@@ -54,7 +51,7 @@ class AtomicList(Atomic):
     def __delitem__(self, index: int):
         with self.data[index].lock:
             del self.data[index]
-            
+
     def __eq__(self, other: Union[AtomicList|List]):
         if len(self) != len(other):
             return False
@@ -63,20 +60,46 @@ class AtomicList(Atomic):
                 return False
         else:
             return True
-        
+
     def extend(self, other: Union[AtomicList|List[Singleton|int|float]]):
-        atomized_list = self.atomize(obj=other)
-        self.data.extend(atomized_list)
-    
+        with self.lock:
+            atomized_list = self.atomize(obj=other)
+            self.data.extend(atomized_list)
+
     def append(self, other: Union[Atomic|int|float]):
         from common import create
-        self.data.append(create(other))
-        
-    def remove(self, item: Union[Atomic|int|float]):
+        with self.lock:
+            self.data.append(create(other))
+
+    def remove(self, item: Atomic):
         for _ in range(len(self)):
-            if self[_] == item:
+            if self.data[_] == item:
                 break
-        del self[_]
+        del self.data[_]
+
+    def count(self, item: Atomic):
+        with self.lock:
+            return self.data.count(item)
+
+    def index(self, item: Atomic):
+        with self.lock:
+            return self.data.index(item)
+
+    def pop(self, index: int) -> Atomic:
+        with self.lock:
+            return self.data.pop(index)
+    
+    def sort(self):
+        with self.lock:
+            self.data.sort()
+
+    def reverse(self):
+        with self.lock:
+            self.data.reverse()
+
+    def insert(self, index: int, item: Union[Atomic|int|float]):
+        with self.lock:
+            self.data.insert(index, item)
 
 
 
@@ -101,9 +124,6 @@ class AtomicDict(Atomic):
                     atomized_dict[key] = Singleton(value)
         return atomized_dict
 
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.data})"
-    
     def __len__(self) -> int:
         return len(self.data)
 
@@ -141,19 +161,46 @@ class AtomicDict(Atomic):
     def update(self, other: Union[AtomicDict|Dict]):
         with self.lock:
             self.data.update(self.atomize(other))
-        
-        
-        
+
+    def get(self, key: str) -> Atomic:
+        with self.data[key].lock:
+            return self.data[key]
+
+    def clear(self):
+        with self.lock:
+            self.data = dict()
+            self.lock = Lock()
+
+    def pop(self, key: str) -> Atomic:
+        with self.data[key].lock:
+            return self.data.pop(key)
+
+    def keys(self):
+        with self.lock:
+            return self.data.keys()
+
+    def values(self):
+        with self.lock:
+            return self.data.values()
+
+    @classmethod
+    def fromkeys(cls, arr: Iterable[str], value: Union[Atomic|int|float]):
+        if not isinstance(value, Atomic):
+            value = Singleton(value)
+        return cls.__init__(dict.fromkeys(arr, value))
+
+
+
 if __name__ == "__main__":
     import threading
-    
+
     dic = AtomicDict({"a": 0, "b": 1, "c": 2})
-    
+
     def f():
         global dic
         for i in range(1000000):
             dic["a"] += 1
-    
+
     t1 = threading.Thread(target=f)
     t2 = threading.Thread(target=f)
     t1.start(), t2.start()

@@ -12,6 +12,6 @@ class Atomic(ABC):
     @abstractmethod
     def atomize(obj):
         raise NotImplementedError("staticmethod `atomize` not implemented")
-    
 
-
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.data})"
