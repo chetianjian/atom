@@ -74,8 +74,9 @@ class AtomicList(Atomic):
     def remove(self, item: Atomic):
         for _ in range(len(self)):
             if self.data[_] == item:
+                with self.data[_].lock:
+                    del self.data[_]
                 break
-        del self.data[_]
 
     def count(self, item: Atomic):
         with self.lock:
