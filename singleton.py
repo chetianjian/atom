@@ -227,12 +227,10 @@ if __name__ == "__main__":
     def f():
         global obj
         for i in range(1000000):
-            with obj.lock:
-                obj += 1
+            obj += 1
 
     t1 = threading.Thread(target=f)
     t2 = threading.Thread(target=f)
     t1.start(), t2.start()
     t1.join(), t2.join()
     print(obj)
-    

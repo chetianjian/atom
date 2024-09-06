@@ -89,7 +89,7 @@ class AtomicList(Atomic):
     def pop(self, index: int) -> Atomic:
         with self.lock:
             return self.data.pop(index)
-    
+
     def sort(self):
         with self.lock:
             self.data.sort()
