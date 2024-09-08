@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Union, Iterable, List, Dict
+from typing import Union, Iterable, List, Dict, Tuple, Set
 from threading import Lock
 from singleton import Singleton
 from atomic import Atomic
@@ -53,13 +53,10 @@ class AtomicList(Atomic):
             del self.data[index]
 
     def __eq__(self, other: Union[AtomicList|List]):
-        if len(self) != len(other):
-            return False
-        for _ in range(len(self)):
-            if self.data[_] != other[_]:
-                return False
+        if isinstance(other, AtomicList):
+            return self.data == other.data
         else:
-            return True
+            return self.data == other
 
     def extend(self, other: Union[AtomicList|List[Singleton|int|float]]):
         with self.lock:
@@ -154,13 +151,10 @@ class AtomicDict(Atomic):
             del self.data[key]
 
     def __eq__(self, other: Union[AtomicDict|Dict]):
-        if len(self) != len(other):
-            return False
-        for key, value in self.data.items():
-            if other[key] != value:
-                return False
+        if isinstance(other, AtomicDict):
+            return self.data == other.data
         else:
-            return True
+            return self.data == other
 
     def update(self, other: Union[AtomicDict|Dict]):
         with self.lock:
@@ -192,6 +186,99 @@ class AtomicDict(Atomic):
         if not isinstance(value, Atomic):
             value = Singleton(value)
         return cls.__init__(dict.fromkeys(arr, value))
+
+
+
+class AtomicTuple(Atomic):
+    data: Tuple[AtomicTuple|Singleton]
+    lock: Lock
+    
+    def __init__(self, default: Union[AtomicTuple|Tuple[AtomicList|List|Singleton|int|float]]):
+        assert isinstance(default, (AtomicTuple, Tuple)), TypeError(f"default: {default} is not an AtomicTuple or Tuple")
+        super().__init__(default=default)
+        
+    @staticmethod
+    def atomize(obj: Union[AtomicTuple|Tuple[AtomicTuple|Tuple|Singleton|int|float]]) -> Tuple:
+        if isinstance(obj, AtomicTuple):
+            atomized_tuple: Tuple = obj.data
+        else:
+            arr: List = list()
+            for item in obj:
+                if isinstance(item, Iterable):
+                    arr.append(AtomicTuple.atomize(obj=item))
+                else:
+                    arr.append(Singleton(item))
+            atomized_tuple = tuple(arr)
+        return atomized_tuple
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def __iter__(self) -> Iterable:
+        return iter(self.data)
+
+    def __contains__(self, value: Union[AtomicTuple|Singleton]) -> bool:
+        return value in self.data
+
+    def __getitem__(self, key: int) -> Atomic:
+        with self.data[key].lock:
+            return self.data[key]
+
+    def __eq__(self, other: Union[AtomicTuple|Tuple]):
+        if isinstance(other, AtomicTuple):
+            return self.data == other.data
+        else:
+            return self.data == other
+
+    def count(self, item: Atomic):
+        with self.lock:
+            return self.data.count(item)
+
+    def index(self, item: Atomic):
+        with self.lock:
+            return self.data.index(item)
+
+
+
+class AtomicSet(Atomic):
+    data: Set[AtomicSet|Singleton]
+    lock: Lock
+    
+    def __init__(self, default: Union[AtomicSet|Set[AtomicSet|Set|Singleton|int|float]]):
+        assert isinstance(default, (AtomicSet, Set)), TypeError(f"default: {default} is not an AtomicSet or Set")
+        super().__init__(default=default)
+
+    @staticmethod
+    def atomize(obj: Union[AtomicSet|Set[AtomicSet|Set|Singleton|int|float]]) -> Set:
+        if isinstance(obj, AtomicTuple):
+            atomized_set: Set = obj.data
+        else:
+            atomized_set = set()
+            for item in obj:
+                if isinstance(item, Iterable):
+                    atomized_set.add(AtomicSet.atomize(obj=item))
+                else:
+                    atomized_set.add(Singleton(item))
+        return atomized_set
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def __iter__(self) -> Iterable:
+        return iter(self.data)
+
+    def __contains__(self, value: Union[AtomicSet|Singleton]) -> bool:
+        return value in self.data
+
+    def __eq__(self, other: Union[AtomicSet|Set]):
+        if isinstance(other, AtomicSet):
+            return self.data == other.data
+        else:
+            return self.data == other
+
+
+
+
 
 
 
