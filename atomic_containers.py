@@ -68,11 +68,11 @@ class AtomicList(Atomic):
         with self.lock:
             self.data.remove(item)
 
-    def count(self, item: Any):
+    def count(self, item: Any) -> int:
         with self.lock:
             return self.data.count(item)
 
-    def index(self, item: Any):
+    def index(self, item: Any) -> int:
         with self.lock:
             return self.data.index(item)
 
@@ -130,7 +130,7 @@ class AtomicDict(Atomic):
         with self.data[key].lock:
             del self.data[key]
 
-    def __eq__(self, other: Any):
+    def __eq__(self, other: Any) -> bool:
         return self.data == other
 
     def update(self, other: Union[AtomicDict|Dict]):
@@ -158,7 +158,7 @@ class AtomicDict(Atomic):
             return self.data.values()
 
     @classmethod
-    def fromkeys(cls, arr: Iterable[Hashable], value: Any = None):
+    def fromkeys(cls, arr: Iterable[Hashable], value: Any = None) -> AtomicDict:
         if not isinstance(value, Atomic):
             value = general_atomize(item=value)
         return cls(default=dict.fromkeys(arr, value))
@@ -196,11 +196,11 @@ class AtomicTuple(Atomic):
     def __eq__(self, other: Any) -> bool:
         return self.data == other
 
-    def count(self, item: Atomic):
+    def count(self, item: Atomic) -> int:
         with self.lock:
             return self.data.count(item)
 
-    def index(self, item: Atomic):
+    def index(self, item: Atomic) -> int:
         with self.lock:
             return self.data.index(item)
 
