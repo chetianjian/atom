@@ -1,31 +1,36 @@
 from __future__ import annotations
-from typing import Union, Iterable, List, Dict, Tuple, Set
+from typing import Union, Iterable, List, Dict, Tuple, Set, Any, Hashable
 from threading import Lock
 from singleton import Singleton
 from atomic import Atomic
 
 
 
+def general_atomize(item: Any) -> Atomic:
+    if isinstance(item, Atomic):
+        return item
+    TYPE_MAP = {list: AtomicList, 
+                dict: AtomicDict, 
+                tuple: AtomicTuple, 
+                set: AtomicSet}
+    return TYPE_MAP.get(type(item), Singleton)(item)
+
+
+
 class AtomicList(Atomic):
-    data: List[AtomicList|Singleton]
+    data: List[Atomic]
     lock: Lock
 
-    def __init__(self, default: Union[AtomicList|List[AtomicList|List|Singleton|int|float]]):
+    def __init__(self, default: Union[AtomicList|List]):
         assert isinstance(default, (AtomicList, List)), TypeError(f"default: {default} is not an AtomicList or List")
         super().__init__(default=default)
 
     @staticmethod
-    def atomize(obj: Union[AtomicList|List[AtomicList|List|Singleton|int|float]]) -> List:
-        if isinstance(obj, AtomicList):
-            atomized_list: List = obj.data
+    def atomize(obj: Union[AtomicList|List]) -> List:
+        if isinstance(obj, AtomicList): 
+            return obj.data
         else:
-            atomized_list: List = list()
-            for item in obj:
-                if isinstance(item, Iterable):
-                    atomized_list.append(AtomicList.atomize(obj=item))
-                else:
-                    atomized_list.append(Singleton(item))
-        return atomized_list
+            return [general_atomize(item=item) for item in obj]
 
     def __len__(self) -> int:
         return len(self.data)
@@ -40,53 +45,38 @@ class AtomicList(Atomic):
         with self.data[index].lock:
             return self.data[index]
 
-    def __setitem__(self, index: int, item: Union[Atomic|int|float]):
-        if isinstance(item, Atomic):
-            with self.data[index].lock:
-                self.data[index] = item
-        else:
-            with self.data[index].lock:
-                self.data[index] = Singleton(item)
+    def __setitem__(self, index: int, item: Any):
+        with self.data[index].lock:
+            self.data[index] = general_atomize(item=item)
 
     def __delitem__(self, index: int):
         with self.data[index].lock:
             del self.data[index]
 
-    def __eq__(self, other: Union[AtomicList|List]):
-        if isinstance(other, AtomicList):
-            return self.data == other.data
-        else:
-            return self.data == other
+    def __eq__(self, other: Any) -> bool:
+        return self.data == other
 
-    def extend(self, other: Union[AtomicList|List[Singleton|int|float]]):
+    def extend(self, item: Union[AtomicList|List]):
         with self.lock:
-            atomized_list = self.atomize(obj=other)
-            self.data.extend(atomized_list)
+            self.data.extend(self.atomize(obj=item))
 
-    def append(self, other: Union[AtomicList|List|Singleton|int|float]):
-        if isinstance(other, (AtomicList, List)):
-            with self.lock:
-                self.data.append(AtomicList(other))
-        else:
-            with self.lock:
-                self.data.append(Singleton(other))
+    def append(self, item: Any):
+        with self.lock:
+            self.data.append(general_atomize(item=item))
 
-    def remove(self, item: Atomic):
-        for _ in range(len(self)):
-            if self.data[_] == item:
-                with self.data[_].lock:
-                    del self.data[_]
-                break
+    def remove(self, item: Any):
+        with self.lock:
+            self.data.remove(item)
 
-    def count(self, item: Atomic):
+    def count(self, item: Any):
         with self.lock:
             return self.data.count(item)
 
-    def index(self, item: Atomic):
+    def index(self, item: Any):
         with self.lock:
             return self.data.index(item)
 
-    def pop(self, index: int) -> Atomic:
+    def pop(self, index: int) -> Any:
         with self.lock:
             return self.data.pop(index)
 
@@ -98,32 +88,26 @@ class AtomicList(Atomic):
         with self.lock:
             self.data.reverse()
 
-    def insert(self, index: int, item: Union[Atomic|int|float]):
+    def insert(self, index: int, item: Any):
         with self.lock:
             self.data.insert(index, item)
 
 
 
 class AtomicDict(Atomic):
-    data: Dict[str, AtomicDict|Singleton]
+    data: Dict[str, Atomic]
     lock: Lock
 
-    def __init__(self, default: Union[AtomicDict|Dict[str, AtomicDict|Dict|Singleton|int|float]]):
+    def __init__(self, default: Union[AtomicDict|Dict]):
         assert isinstance(default, (AtomicDict, Dict)), TypeError(f"default: {default} is not an AtomicDict or Dict")
         super().__init__(default=default)
 
     @staticmethod
-    def atomize(obj: Union[AtomicDict|Dict[str, AtomicDict|Dict|Singleton|int|float]]) -> Dict:
+    def atomize(obj: Union[AtomicDict|Dict]) -> Dict:
         if isinstance(obj, AtomicDict):
-            atomized_dict: Dict = obj.data
+            return obj.data
         else:
-            atomized_dict = dict()
-            for key, value in obj.items():
-                if isinstance(value, Iterable):
-                    atomized_dict[key] = AtomicDict.atomize(obj=value)
-                else:
-                    atomized_dict[key] = Singleton(value)
-        return atomized_dict
+            return {key: general_atomize(item=value) for key, value in obj.items()}
 
     def __len__(self) -> int:
         return len(self.data)
@@ -138,23 +122,16 @@ class AtomicDict(Atomic):
         with self.data[key].lock:
             return self.data[key]
 
-    def __setitem__(self, key: str, value: Union[AtomicDict|Dict|Singleton|int|float]):
-        if isinstance(value, (AtomicDict, Dict)):
-            with self.data[key].lock:
-                self.data[key] = AtomicDict(value)
-        else:
-            with self.data[key].lock:
-                self.data[key] = Singleton(value)
+    def __setitem__(self, key: str, value: Any):
+        with self.data[key].lock:
+            self.data[key] = general_atomize(item=value)
 
     def __delitem__(self, key: str):
         with self.data[key].lock:
             del self.data[key]
 
-    def __eq__(self, other: Union[AtomicDict|Dict]):
-        if isinstance(other, AtomicDict):
-            return self.data == other.data
-        else:
-            return self.data == other
+    def __eq__(self, other: Any):
+        return self.data == other
 
     def update(self, other: Union[AtomicDict|Dict]):
         with self.lock:
@@ -166,8 +143,7 @@ class AtomicDict(Atomic):
 
     def clear(self):
         with self.lock:
-            self.data = dict()
-            self.lock = Lock()
+            self.data.clear()
 
     def pop(self, key: str) -> Atomic:
         with self.data[key].lock:
@@ -182,34 +158,27 @@ class AtomicDict(Atomic):
             return self.data.values()
 
     @classmethod
-    def fromkeys(cls, arr: Iterable[str], value: Union[Atomic|int|float]):
+    def fromkeys(cls, arr: Iterable[str], value: Any = None):
         if not isinstance(value, Atomic):
-            value = Singleton(value)
-        return cls.__init__(dict.fromkeys(arr, value))
+            value = general_atomize(item=value)
+        return cls(default=dict.fromkeys(arr, value))
 
 
 
 class AtomicTuple(Atomic):
-    data: Tuple[AtomicTuple|Singleton]
+    data: Tuple[Atomic]
     lock: Lock
-    
-    def __init__(self, default: Union[AtomicTuple|Tuple[AtomicList|List|Singleton|int|float]]):
+
+    def __init__(self, default: Union[AtomicTuple|Tuple]):
         assert isinstance(default, (AtomicTuple, Tuple)), TypeError(f"default: {default} is not an AtomicTuple or Tuple")
         super().__init__(default=default)
-        
+
     @staticmethod
-    def atomize(obj: Union[AtomicTuple|Tuple[AtomicTuple|Tuple|Singleton|int|float]]) -> Tuple:
+    def atomize(obj: Union[AtomicTuple|Tuple]) -> Tuple:
         if isinstance(obj, AtomicTuple):
-            atomized_tuple: Tuple = obj.data
+            return obj.data
         else:
-            arr: List = list()
-            for item in obj:
-                if isinstance(item, Iterable):
-                    arr.append(AtomicTuple.atomize(obj=item))
-                else:
-                    arr.append(Singleton(item))
-            atomized_tuple = tuple(arr)
-        return atomized_tuple
+            return tuple([general_atomize(item=item) for item in obj])
 
     def __len__(self) -> int:
         return len(self.data)
@@ -224,11 +193,8 @@ class AtomicTuple(Atomic):
         with self.data[key].lock:
             return self.data[key]
 
-    def __eq__(self, other: Union[AtomicTuple|Tuple]):
-        if isinstance(other, AtomicTuple):
-            return self.data == other.data
-        else:
-            return self.data == other
+    def __eq__(self, other: Any) -> bool:
+        return self.data == other
 
     def count(self, item: Atomic):
         with self.lock:
@@ -241,25 +207,19 @@ class AtomicTuple(Atomic):
 
 
 class AtomicSet(Atomic):
-    data: Set[AtomicSet|Singleton]
+    data: Set[Singleton]
     lock: Lock
-    
-    def __init__(self, default: Union[AtomicSet|Set[AtomicSet|Set|Singleton|int|float]]):
+
+    def __init__(self, default: Union[AtomicSet|Set]):
         assert isinstance(default, (AtomicSet, Set)), TypeError(f"default: {default} is not an AtomicSet or Set")
         super().__init__(default=default)
 
     @staticmethod
-    def atomize(obj: Union[AtomicSet|Set[AtomicSet|Set|Singleton|int|float]]) -> Set:
-        if isinstance(obj, AtomicTuple):
-            atomized_set: Set = obj.data
+    def atomize(obj: Union[AtomicSet|Set]) -> Set:
+        if isinstance(obj, AtomicSet):
+            return obj
         else:
-            atomized_set = set()
-            for item in obj:
-                if isinstance(item, Iterable):
-                    atomized_set.add(AtomicSet.atomize(obj=item))
-                else:
-                    atomized_set.add(Singleton(item))
-        return atomized_set
+            return set([Singleton(item) for item in obj])  # There is no nested set
 
     def __len__(self) -> int:
         return len(self.data)
@@ -267,18 +227,63 @@ class AtomicSet(Atomic):
     def __iter__(self) -> Iterable:
         return iter(self.data)
 
-    def __contains__(self, value: Union[AtomicSet|Singleton]) -> bool:
+    def __contains__(self, value: Any) -> bool:
         return value in self.data
 
-    def __eq__(self, other: Union[AtomicSet|Set]):
-        if isinstance(other, AtomicSet):
-            return self.data == other.data
-        else:
-            return self.data == other
+    def __eq__(self, other: Any) -> bool:
+        return self.data == other
 
+    def add(self, item: Hashable):
+        with self.lock:
+            self.data.add(Singleton(item))
 
+    def discard(self, item: Hashable):
+        with self.lock:
+            self.data.discard(item)
 
+    def remove(self, item: Hashable):
+        with self.lock:
+            self.data.remove(Singleton(item))
 
+    def pop(self) -> Singleton:
+        with self.lock:
+            return self.data.pop()
+
+    def clear(self):
+        with self.lock:
+            self.data.clear()
+
+    def difference(self, other: Union[Iterable|Hashable]) -> AtomicSet:
+        with self.lock:
+            return AtomicSet(self.data.difference(other))
+
+    def difference_update(self, other: Union[Iterable|Hashable]):
+        with self.lock:
+            self.data.difference_update(other)
+
+    def intersection(self, other: Union[Iterable|Hashable]) -> AtomicSet:
+        with self.lock:
+            return AtomicSet(self.data.intersection(other))
+
+    def union(self, other: Union[Iterable|Hashable]) -> AtomicSet:
+        with self.lock:
+            return AtomicSet(self.data.union(other))
+
+    def update(self, other: Union[Iterable|Hashable]):
+        with self.lock:
+            self.data.update(other)
+
+    def isdisjoint(self, other: Union[Iterable|Hashable]) -> bool:
+        with self.lock:
+            return self.data.isdisjoint(other)
+
+    def issubset(self, other: Union[Iterable|Hashable]) -> bool:
+        with self.lock:
+            return self.data.issubset(other)
+
+    def issuperset(self, other: Union[Iterable|Hashable]) -> bool:
+        with self.lock:
+            return self.data.issuperset(other)
 
 
 
@@ -286,7 +291,6 @@ if __name__ == "__main__":
     import threading
 
     dic = AtomicDict({"a": 0, "b": 1, "c": 2})
-
     def f():
         global dic
         for i in range(1000000):
@@ -297,3 +301,15 @@ if __name__ == "__main__":
     t1.start(), t2.start()
     t1.join(), t2.join()
     print(dic)
+
+
+    lst = AtomicList([0, 1, 2])
+    def g():
+        global lst
+        for i in range(1000000):
+            lst[0] += 1
+    t1 = threading.Thread(target=g)
+    t2 = threading.Thread(target=g)
+    t1.start(), t2.start()
+    t1.join(), t2.join()
+    print(lst)

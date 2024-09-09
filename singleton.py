@@ -1,15 +1,15 @@
 from __future__ import annotations
-from typing import Union
+from typing import Union, Hashable
 from atomic import Atomic
 from threading import Lock
 
 
 
 class Singleton(Atomic):
-    data: Union[int|float]
+    data: Union[Hashable]
     lock: Lock
 
-    def __init__(self, default: Union[Singleton|int|float]):
+    def __init__(self, default: Union[Singleton|Hashable]):
         super().__init__(default)
 
     @staticmethod
@@ -19,43 +19,46 @@ class Singleton(Atomic):
         else:
             return obj
 
-    def __eq__(self, other: Union[Singleton|int|float]):
+    def __hash__(self):
+        return hash(self.data)
+
+    def __eq__(self, other: Union[Singleton|Hashable]):
         if other.__class__ is Singleton:
             return self.data == other.data
         else:
             return self.data == other
 
-    def __ne__(self, other: Union[Singleton|int|float]):
+    def __ne__(self, other: Union[Singleton|Hashable]):
         if other.__class__ is Singleton:
             return self.data != other.data
         else:
             return self.data != other
 
-    def __lt__(self, other: Union[Singleton|int|float]):
+    def __lt__(self, other: Union[Singleton|Hashable]):
         if other.__class__ is Singleton:
             return self.data < other.data
         else:
             return self.data < other
 
-    def __le__(self, other: Union[Singleton|int|float]):
+    def __le__(self, other: Union[Singleton|Hashable]):
         if other.__class__ is Singleton:
             return self.data <= other.data
         else:
             return self.data <= other
 
-    def __gt__(self, other: Union[Singleton|int|float]):
+    def __gt__(self, other: Union[Singleton|Hashable]):
         if other.__class__ is Singleton:
             return self.data > other.data
         else:
             return self.data > other
 
-    def __ge__(self, other: Union[Singleton|int|float]):
+    def __ge__(self, other: Union[Singleton|Hashable]):
         if other.__class__ is Singleton:
             return self.data >= other.data
         else:
             return self.data >= other
 
-    def __add__(self, other: Union[Singleton|int|float]):
+    def __add__(self, other: Union[Singleton|Hashable]):
         if other.__class__ is Singleton:
             return Singleton(self.data + other.data)
         else:
@@ -67,7 +70,7 @@ class Singleton(Atomic):
         else:
             return Singleton(self.data + other)
 
-    def __mul__(self, other: Union[Singleton|int|float]):
+    def __mul__(self, other: Union[Singleton|Hashable]):
         if other.__class__ is Singleton:
             return Singleton(self.data * other.data)
         else:
@@ -97,7 +100,7 @@ class Singleton(Atomic):
         else:
             return Singleton(self.data ** other)
 
-    def __radd__(self, other: Union[Singleton|int|float]):
+    def __radd__(self, other: Union[Singleton|Hashable]):
         if other.__class__ is Singleton:
             return Singleton(other.data + self.data)
         else:
@@ -109,7 +112,7 @@ class Singleton(Atomic):
         else:
             return Singleton(other - self.data)
 
-    def __rmul__(self, other: Union[Singleton|int|float]):
+    def __rmul__(self, other: Union[Singleton|Hashable]):
         if other.__class__ is Singleton:
             return Singleton(other.data * self.data)
         else:
@@ -139,7 +142,7 @@ class Singleton(Atomic):
         else:
             return Singleton(other ** self.data)
 
-    def __iadd__(self, other: Union[Singleton|int|float]):
+    def __iadd__(self, other: Union[Singleton|Hashable]):
         if other.__class__ is Singleton:
             with self.lock:
                 self.data += other.data
@@ -157,7 +160,7 @@ class Singleton(Atomic):
                 self.data -= other
         return self
 
-    def __imul__(self, other: Union[Singleton|int|float]):
+    def __imul__(self, other: Union[Singleton|Hashable]):
         if other.__class__ is Singleton:
             with self.lock:
                 self.data *= other.data
@@ -208,6 +211,9 @@ class Singleton(Atomic):
     def __float__(self):
         return float(self.data)
 
+    def __str__(self):
+        return str(self.data)
+
     def __complex__(self): 
         return complex(self.data)
 
@@ -226,7 +232,7 @@ if __name__ == "__main__":
     import threading
     def f():
         global obj
-        for i in range(1000000):
+        for i in range(10000000):
             obj += 1
 
     t1 = threading.Thread(target=f)
