@@ -95,7 +95,7 @@ class AtomicList(Atomic):
 
 
 class AtomicDict(Atomic):
-    data: Dict[str, Atomic]
+    data: Dict[Hashable, Atomic]
     lock: Lock
 
     def __init__(self, default: Union[AtomicDict|Dict]):
@@ -118,15 +118,15 @@ class AtomicDict(Atomic):
     def __contains__(self, value: Union[AtomicDict|Singleton]) -> bool:
         return value in self.data
 
-    def __getitem__(self, key: str) -> Atomic:
+    def __getitem__(self, key: Hashable) -> Atomic:
         with self.data[key].lock:
             return self.data[key]
 
-    def __setitem__(self, key: str, value: Any):
+    def __setitem__(self, key: Hashable, value: Any):
         with self.data[key].lock:
             self.data[key] = general_atomize(item=value)
 
-    def __delitem__(self, key: str):
+    def __delitem__(self, key: Hashable):
         with self.data[key].lock:
             del self.data[key]
 
@@ -137,7 +137,7 @@ class AtomicDict(Atomic):
         with self.lock:
             self.data.update(self.atomize(other))
 
-    def get(self, key: str) -> Atomic:
+    def get(self, key: Hashable) -> Atomic:
         with self.data[key].lock:
             return self.data[key]
 
@@ -145,7 +145,7 @@ class AtomicDict(Atomic):
         with self.lock:
             self.data.clear()
 
-    def pop(self, key: str) -> Atomic:
+    def pop(self, key: Hashable) -> Atomic:
         with self.data[key].lock:
             return self.data.pop(key)
 
@@ -158,7 +158,7 @@ class AtomicDict(Atomic):
             return self.data.values()
 
     @classmethod
-    def fromkeys(cls, arr: Iterable[str], value: Any = None):
+    def fromkeys(cls, arr: Iterable[Hashable], value: Any = None):
         if not isinstance(value, Atomic):
             value = general_atomize(item=value)
         return cls(default=dict.fromkeys(arr, value))
