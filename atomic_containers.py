@@ -138,7 +138,7 @@ class AtomicDict(Atomic):
             self.data.update(self.atomize(other))
 
     def get(self, key: Hashable) -> Atomic:
-        with self.data[key].lock:
+        with self.data.get(key, Singleton()).lock:
             return self.data[key]
 
     def clear(self):
