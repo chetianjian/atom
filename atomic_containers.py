@@ -21,7 +21,7 @@ class AtomicList(Atomic):
     data: List[Atomic]
     lock: Lock
 
-    def __init__(self, default: Union[AtomicList|List]):
+    def __init__(self, default: Union[AtomicList|List] = list()):
         assert isinstance(default, (AtomicList, List)), TypeError(f"default: {default} is not an AtomicList or List")
         super().__init__(default=default)
 
@@ -98,7 +98,7 @@ class AtomicDict(Atomic):
     data: Dict[Hashable, Atomic]
     lock: Lock
 
-    def __init__(self, default: Union[AtomicDict|Dict]):
+    def __init__(self, default: Union[AtomicDict|Dict] = dict()):
         assert isinstance(default, (AtomicDict, Dict)), TypeError(f"default: {default} is not an AtomicDict or Dict")
         super().__init__(default=default)
 
@@ -123,7 +123,7 @@ class AtomicDict(Atomic):
             return self.data[key]
 
     def __setitem__(self, key: Hashable, value: Any):
-        with self.data[key].lock:
+        with self.data.get(key, Singleton()).lock:
             self.data[key] = general_atomize(item=value)
 
     def __delitem__(self, key: Hashable):
@@ -169,7 +169,7 @@ class AtomicTuple(Atomic):
     data: Tuple[Atomic]
     lock: Lock
 
-    def __init__(self, default: Union[AtomicTuple|Tuple]):
+    def __init__(self, default: Union[AtomicTuple|Tuple] = tuple()):
         assert isinstance(default, (AtomicTuple, Tuple)), TypeError(f"default: {default} is not an AtomicTuple or Tuple")
         super().__init__(default=default)
 
@@ -210,7 +210,7 @@ class AtomicSet(Atomic):
     data: Set[Singleton]
     lock: Lock
 
-    def __init__(self, default: Union[AtomicSet|Set]):
+    def __init__(self, default: Union[AtomicSet|Set] = set()):
         assert isinstance(default, (AtomicSet, Set)), TypeError(f"default: {default} is not an AtomicSet or Set")
         super().__init__(default=default)
 

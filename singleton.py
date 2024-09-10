@@ -9,7 +9,7 @@ class Singleton(Atomic):
     data: Union[Hashable]
     lock: Lock
 
-    def __init__(self, default: Union[Singleton|Hashable]):
+    def __init__(self, default: Union[Singleton|Hashable] = 0):
         super().__init__(default)
 
     @staticmethod
