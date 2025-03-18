@@ -1,6 +1,6 @@
+from __future__ import annotations
 from threading import Lock
 from typing import Union, Hashable
-from __future__ import annotations
 
 from atom.atomic import Atomic
 

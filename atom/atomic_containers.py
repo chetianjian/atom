@@ -1,5 +1,5 @@
-from threading import Lock
 from __future__ import annotations
+from threading import Lock
 from typing import Union, Iterable, List, Dict, Tuple, Set, Any, Hashable
 
 from atom.singleton import Singleton
