@@ -1,8 +1,9 @@
+from threading import Lock
 from __future__ import annotations
 from typing import Union, Iterable, List, Dict, Tuple, Set, Any, Hashable
-from threading import Lock
-from .singleton import Singleton
-from .atomic import Atomic
+
+from atom.singleton import Singleton
+from atom.atomic import Atomic
 
 
 

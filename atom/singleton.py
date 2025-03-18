@@ -1,7 +1,8 @@
-from __future__ import annotations
-from typing import Union, Hashable
-from .atomic import Atomic
 from threading import Lock
+from typing import Union, Hashable
+from __future__ import annotations
+
+from atom.atomic import Atomic
 
 
 
@@ -11,7 +12,7 @@ class Singleton(Atomic):
 
     def __init__(self, default: Union[Singleton|Hashable] = 0):
         super().__init__(default)
-
+ 
     @staticmethod
     def atomize(obj):
         if isinstance(obj, Singleton):
